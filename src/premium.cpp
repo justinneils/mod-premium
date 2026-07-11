@@ -72,6 +72,152 @@ enum PremiumGossip
     GOSSIP_FACTION
 };
 
+template <typename T, std::size_t N>
+static constexpr uint32 CountOf(T const (&)[N])
+{
+    return static_cast<uint32>(N);
+}
+
+struct TrainerTier
+{
+    char const* label;
+    uint32 entry;
+};
+
+struct ProfessionTrainerData
+{
+    char const* name;
+    TrainerTier const* tiers;
+    uint32 tierCount;
+};
+
+// Profession trainers by proficiency tier. SummonTempNPC overrides the
+// summoned creature's faction to the player's, so a single entry serves
+// both factions. A tier only teaches once the player holds the previous
+// proficiency (standard trainer gating).
+static TrainerTier const AlchemyTiers[] =
+{
+    { "Journeyman",   1215 },
+    { "Expert",       2391 },
+    { "Artisan",      4160 },
+    { "Master",       16588 },
+    { "Grand Master", 26903 }
+};
+static TrainerTier const BlacksmithingTiers[] =
+{
+    { "Journeyman",   514 },
+    { "Expert",       1383 },
+    { "Artisan",      3355 },
+    { "Master",       16583 },
+    { "Grand Master", 26564 }
+};
+static TrainerTier const EnchantingTiers[] =
+{
+    { "Journeyman",   3606 },
+    { "Expert",       1317 },
+    { "Artisan",      11072 },
+    { "Master",       18753 },
+    { "Grand Master", 26906 }
+};
+static TrainerTier const EngineeringTiers[] =
+{
+    { "Journeyman",   1702 },
+    { "Expert",       1676 },
+    { "Artisan",      5174 },
+    { "Master",       17634 },
+    { "Grand Master", 25277 }
+};
+static TrainerTier const HerbalismTiers[] =
+{
+    { "Journeyman",   812 },
+    { "Master",       18748 },
+    { "Grand Master", 26910 }
+};
+static TrainerTier const InscriptionTiers[] =
+{
+    { "Journeyman",   30706 },
+    { "Master",       30721 },
+    { "Grand Master", 26916 }
+};
+static TrainerTier const JewelcraftingTiers[] =
+{
+    { "Journeyman",   15501 },
+    { "Master",       18751 },
+    { "Grand Master", 26915 }
+};
+static TrainerTier const LeatherworkingTiers[] =
+{
+    { "Journeyman",   223 },
+    { "Expert",       1385 },
+    { "Artisan",      3007 },
+    { "Master",       18754 },
+    { "Grand Master", 26911 }
+};
+static TrainerTier const MiningTiers[] =
+{
+    { "Journeyman",   1681 },
+    { "Master",       18747 },
+    { "Grand Master", 26912 }
+};
+static TrainerTier const SkinningTiers[] =
+{
+    { "Journeyman",   1292 },
+    { "Master",       18755 },
+    { "Grand Master", 26913 }
+};
+static TrainerTier const TailoringTiers[] =
+{
+    { "Journeyman",   1103 },
+    { "Expert",       2627 },
+    { "Artisan",      1346 },
+    { "Master",       18749 },
+    { "Grand Master", 26914 }
+};
+static TrainerTier const CookingTiers[] =
+{
+    { "Journeyman",   1355 },
+    { "Master",       19186 },
+    { "Grand Master", 26905 }
+};
+static TrainerTier const FirstAidTiers[] =
+{
+    { "Journeyman",   2326 },
+    { "Master",       12920 },
+    { "Grand Master", 23734 }
+};
+static TrainerTier const FishingTiers[] =
+{
+    { "Journeyman",   1651 },
+    { "Grand Master", 26909 }
+};
+
+static ProfessionTrainerData const ProfessionTrainerList[] =
+{
+    { "Alchemy",        AlchemyTiers,        CountOf(AlchemyTiers) },
+    { "Blacksmithing",  BlacksmithingTiers,  CountOf(BlacksmithingTiers) },
+    { "Enchanting",     EnchantingTiers,     CountOf(EnchantingTiers) },
+    { "Engineering",    EngineeringTiers,     CountOf(EngineeringTiers) },
+    { "Herbalism",      HerbalismTiers,      CountOf(HerbalismTiers) },
+    { "Inscription",    InscriptionTiers,    CountOf(InscriptionTiers) },
+    { "Jewelcrafting",  JewelcraftingTiers,  CountOf(JewelcraftingTiers) },
+    { "Leatherworking", LeatherworkingTiers, CountOf(LeatherworkingTiers) },
+    { "Mining",         MiningTiers,         CountOf(MiningTiers) },
+    { "Skinning",       SkinningTiers,       CountOf(SkinningTiers) },
+    { "Tailoring",      TailoringTiers,      CountOf(TailoringTiers) },
+    { "Cooking",        CookingTiers,        CountOf(CookingTiers) },
+    { "First Aid",      FirstAidTiers,       CountOf(FirstAidTiers) },
+    { "Fishing",        FishingTiers,        CountOf(FishingTiers) }
+};
+
+static constexpr uint32 ProfessionTrainerCount =
+    sizeof(ProfessionTrainerList) / sizeof(ProfessionTrainerList[0]);
+
+// Gossip action ranges (GOSSIP_ACTION_INFO_DEF == 1000):
+//   +100 .. +100+profCount   -> open a profession's tier submenu
+//   +200 .. +200+profCount*10 -> summon (profIndex * 10 + tierIndex)
+static constexpr uint32 PROFESSION_TIER_MENU_BASE = GOSSIP_ACTION_INFO_DEF + 100;
+static constexpr uint32 PROFESSION_SUMMON_BASE = GOSSIP_ACTION_INFO_DEF + 200;
+
 class premium_account : public ItemScript
 {
 public:
@@ -130,6 +276,9 @@ public:
 
         if (sConfigMgr->GetOption<bool>("Trainers", true))
             AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_TRAIN_ME, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 8);
+
+        if (sConfigMgr->GetOption<bool>("ProfessionTrainers", true))
+            AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "Profession Trainers", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 10);
 
         if (sConfigMgr->GetOption<bool>("PlayerInteraction", true))
             AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_PLAYER, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 9);
@@ -339,6 +488,44 @@ public:
                     AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_AUCTION_HOUSE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 7);
 
                 SendGossipMenuFor(player, PREMIUM_MENU_TEXT, item->GetGUID());
+                break;
+            }
+            case GOSSIP_ACTION_INFO_DEF + 10: /*Profession Trainers*/
+            {
+                ClearGossipMenuFor(player);
+
+                for (uint32 i = 0; i < ProfessionTrainerCount; ++i)
+                    AddGossipItemFor(player, GOSSIP_ICON_TRAINER, ProfessionTrainerList[i].name, GOSSIP_SENDER_MAIN, PROFESSION_TIER_MENU_BASE + i);
+
+                SendGossipMenuFor(player, PREMIUM_MENU_TEXT, item->GetGUID());
+                break;
+            }
+            default:
+            {
+                if (action >= PROFESSION_TIER_MENU_BASE && action < PROFESSION_TIER_MENU_BASE + ProfessionTrainerCount)
+                {
+                    uint32 profIndex = action - PROFESSION_TIER_MENU_BASE;
+                    ProfessionTrainerData const& prof = ProfessionTrainerList[profIndex];
+
+                    ClearGossipMenuFor(player);
+
+                    for (uint32 i = 0; i < prof.tierCount; ++i)
+                        AddGossipItemFor(player, GOSSIP_ICON_TRAINER, prof.tiers[i].label, GOSSIP_SENDER_MAIN, PROFESSION_SUMMON_BASE + profIndex * 10 + i);
+
+                    SendGossipMenuFor(player, PREMIUM_MENU_TEXT, item->GetGUID());
+                }
+                else if (action >= PROFESSION_SUMMON_BASE && action < PROFESSION_SUMMON_BASE + ProfessionTrainerCount * 10)
+                {
+                    uint32 code = action - PROFESSION_SUMMON_BASE;
+                    uint32 profIndex = code / 10;
+                    uint32 tierIndex = code % 10;
+
+                    if (tierIndex < ProfessionTrainerList[profIndex].tierCount)
+                    {
+                        SummonTempNPC(player, ProfessionTrainerList[profIndex].tiers[tierIndex].entry);
+                        CloseGossipMenuFor(player);
+                    }
+                }
                 break;
             }
         }

@@ -30,6 +30,14 @@ Mount = 1
 
 Trainers = 1
 
+#    Profession Trainers
+#        Description: Allows players to spawn profession trainers, choosing the
+#                     proficiency tier (Journeyman .. Grand Master) per profession
+#        Default:     1  - (Enabled)
+#                     0  - (Disabled)
+
+ProfessionTrainers = 1
+
 #################################################################################################################
 #    PlayerInteraction
 #        Description: This enables the submenu for the below
