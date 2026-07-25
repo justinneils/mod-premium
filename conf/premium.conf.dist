@@ -38,6 +38,14 @@ Trainers = 1
 
 ProfessionTrainers = 1
 
+#    Trade Goods Vendors
+#        Description: Allows players to summon trade-goods / profession supply vendors,
+#                     choosing the profession (General, Alchemy, Blacksmithing, ...)
+#        Default:     1  - (Enabled)
+#                     0  - (Disabled)
+
+TradeGoodsVendors = 1
+
 #################################################################################################################
 #    PlayerInteraction
 #        Description: This enables the submenu for the below

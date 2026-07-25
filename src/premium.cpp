@@ -81,7 +81,8 @@ static constexpr uint32 CountOf(T const (&)[N])
 struct TrainerTier
 {
     char const* label;
-    uint32 entry;
+    uint32 entryA;  // Alliance-race trainer for this proficiency
+    uint32 entryH;  // Horde-race trainer for this proficiency
 };
 
 struct ProfessionTrainerData
@@ -91,104 +92,108 @@ struct ProfessionTrainerData
     uint32 tierCount;
 };
 
-// Profession trainers by proficiency tier. SummonTempNPC overrides the
-// summoned creature's faction to the player's, so a single entry serves
-// both factions. A tier only teaches once the player holds the previous
-// proficiency (standard trainer gating).
+// Profession trainers by proficiency tier, per faction. SummonTempNPC overrides
+// the summoned creature's faction to the player's so it is never hostile, but the
+// model/race is fixed by the creature entry -- so an Alliance player must summon an
+// Alliance-race trainer and a Horde player a Horde-race one. Journeyman/Expert/Artisan
+// use capital-city trainers of each faction; Master uses the neutral Shattrath (Sha'tar)
+// trainers and Grand Master the neutral Dalaran trainers (both acceptable to either side).
+// Where a faction lacks a distinct proficiency trainer, a same-faction trainer that teaches
+// up to the same skill cap is reused (3.3.5 capital trainers teach through Artisan/300).
 static TrainerTier const AlchemyTiers[] =
 {
-    { "Journeyman",   1215 },
-    { "Expert",       2391 },
-    { "Artisan",      4160 },
-    { "Master",       16588 },
-    { "Grand Master", 26903 }
+    { "Journeyman",   1215,  11046 },
+    { "Expert",       5499,  3347 },
+    { "Artisan",      4160,  1386 },
+    { "Master",       33674, 33674 },
+    { "Grand Master", 26903, 26903 }
 };
 static TrainerTier const BlacksmithingTiers[] =
 {
-    { "Journeyman",   514 },
-    { "Expert",       1383 },
-    { "Artisan",      3355 },
-    { "Master",       16583 },
-    { "Grand Master", 26564 }
+    { "Journeyman",   514,   3174 },
+    { "Expert",       3136,  1383 },
+    { "Artisan",      4258,  3355 },
+    { "Master",       33675, 33675 },
+    { "Grand Master", 26904, 26904 }
 };
 static TrainerTier const EnchantingTiers[] =
 {
-    { "Journeyman",   3606 },
-    { "Expert",       1317 },
-    { "Artisan",      11072 },
-    { "Master",       18753 },
-    { "Grand Master", 26906 }
+    { "Journeyman",   3606,  3345 },
+    { "Expert",       1317,  3011 },
+    { "Artisan",      11072, 11074 },
+    { "Master",       33676, 33676 },
+    { "Grand Master", 26906, 26906 }
 };
 static TrainerTier const EngineeringTiers[] =
 {
-    { "Journeyman",   1702 },
-    { "Expert",       1676 },
-    { "Artisan",      5174 },
-    { "Master",       17634 },
-    { "Grand Master", 25277 }
+    { "Journeyman",   1702,  2857 },
+    { "Expert",       5518,  3412 },
+    { "Artisan",      5174,  11017 },
+    { "Master",       33677, 33677 },
+    { "Grand Master", 26907, 26907 }
 };
 static TrainerTier const HerbalismTiers[] =
 {
-    { "Journeyman",   812 },
-    { "Master",       18748 },
-    { "Grand Master", 26910 }
+    { "Journeyman",   812,   3013 },
+    { "Master",       33678, 33678 },
+    { "Grand Master", 26910, 26910 }
 };
 static TrainerTier const InscriptionTiers[] =
 {
-    { "Journeyman",   30706 },
-    { "Master",       30721 },
-    { "Grand Master", 26916 }
+    { "Journeyman",   30713, 30706 },
+    { "Master",       33679, 33679 },
+    { "Grand Master", 26916, 26916 }
 };
 static TrainerTier const JewelcraftingTiers[] =
 {
-    { "Journeyman",   15501 },
-    { "Master",       18751 },
-    { "Grand Master", 26915 }
+    { "Journeyman",   19778, 15501 },
+    { "Master",       33680, 33680 },
+    { "Grand Master", 26915, 26915 }
 };
 static TrainerTier const LeatherworkingTiers[] =
 {
-    { "Journeyman",   223 },
-    { "Expert",       1385 },
-    { "Artisan",      3007 },
-    { "Master",       18754 },
-    { "Grand Master", 26911 }
+    { "Journeyman",   1632,  5811 },
+    { "Expert",       5564,  1385 },
+    { "Artisan",      4212,  3007 },
+    { "Master",       33681, 33681 },
+    { "Grand Master", 26911, 26911 }
 };
 static TrainerTier const MiningTiers[] =
 {
-    { "Journeyman",   1681 },
-    { "Master",       18747 },
-    { "Grand Master", 26912 }
+    { "Journeyman",   1681,  3357 },
+    { "Master",       33682, 33682 },
+    { "Grand Master", 26912, 26912 }
 };
 static TrainerTier const SkinningTiers[] =
 {
-    { "Journeyman",   1292 },
-    { "Master",       18755 },
-    { "Grand Master", 26913 }
+    { "Journeyman",   1292,  7088 },
+    { "Master",       33683, 33683 },
+    { "Grand Master", 26913, 26913 }
 };
 static TrainerTier const TailoringTiers[] =
 {
-    { "Journeyman",   1103 },
-    { "Expert",       2627 },
-    { "Artisan",      1346 },
-    { "Master",       18749 },
-    { "Grand Master", 26914 }
+    { "Journeyman",   1103,  2855 },
+    { "Expert",       5567,  3363 },
+    { "Artisan",      1346,  3363 },
+    { "Master",       33684, 33684 },
+    { "Grand Master", 26914, 26914 }
 };
 static TrainerTier const CookingTiers[] =
 {
-    { "Journeyman",   1355 },
-    { "Master",       19186 },
-    { "Grand Master", 26905 }
+    { "Journeyman",   3087,  3026 },
+    { "Master",       19186, 19186 },
+    { "Grand Master", 26905, 26905 }
 };
 static TrainerTier const FirstAidTiers[] =
 {
-    { "Journeyman",   2326 },
-    { "Master",       12920 },
-    { "Grand Master", 23734 }
+    { "Journeyman",   2327,  3373 },
+    { "Master",       22477, 22477 },
+    { "Grand Master", 23734, 23734 }
 };
 static TrainerTier const FishingTiers[] =
 {
-    { "Journeyman",   1651 },
-    { "Grand Master", 26909 }
+    { "Journeyman",   1680,  3332 },
+    { "Grand Master", 26909, 26909 }
 };
 
 static ProfessionTrainerData const ProfessionTrainerList[] =
@@ -212,11 +217,48 @@ static ProfessionTrainerData const ProfessionTrainerList[] =
 static constexpr uint32 ProfessionTrainerCount =
     sizeof(ProfessionTrainerList) / sizeof(ProfessionTrainerList[0]);
 
+// Trade-goods / supply vendors by profession, per faction. As with the profession
+// trainers, SummonTempNPC overrides the summoned creature's faction to the player's,
+// so hostility is never an issue -- the entry only fixes the race/model, so Alliance
+// players summon an Alliance-race capital vendor and Horde players a Horde-race one.
+// Each entry is a well-stocked capital-city supply vendor (verified to have npc_vendor
+// inventory). Gathering professions (Herbalism, Skinning) are omitted -- they have no
+// supply vendor; First Aid cloth is covered by the General Trade Goods vendor.
+struct TradeGoodsVendorData
+{
+    char const* name;
+    uint32 entryA;  // Alliance-race vendor
+    uint32 entryH;  // Horde-race vendor
+};
+
+static TradeGoodsVendorData const TradeGoodsVendorList[] =
+{
+    { "General Trade Goods", 8934,  5817 },  // Christopher Hewen  / Shimra
+    { "Alchemy",             1313,  3348 },  // Maria Lumere       / Kor'geld
+    { "Blacksmithing",       5512,  2999 },  // Kaita Deepforge    / Taur Stonehoof
+    { "Cooking",             16718, 16677 }, // Phea               / Quelis
+    { "Enchanting",          1318,  3346 },  // Jessara Cordell    / Kithas
+    { "Engineering",         5175,  3413 },  // Gearcutter Cogspinner / Sovik
+    { "Fishing",             16708, 3333 },  // Dekin              / Shankys
+    { "Inscription",         30730, 30723 }, // Stanly McCormick   / Xantili
+    { "Jewelcrafting",       17512, 16624 }, // Arred              / Gelanthis
+    { "Leatherworking",      5565,  3366 },  // Jillian Tanner     / Tamar
+    { "Mining",              16751, 16664 }, // Merran             / Zelan
+    { "Tailoring",           1347,  3364 }   // Alexandra Bolero   / Borya
+};
+
+static constexpr uint32 TradeGoodsVendorCount =
+    sizeof(TradeGoodsVendorList) / sizeof(TradeGoodsVendorList[0]);
+
 // Gossip action ranges (GOSSIP_ACTION_INFO_DEF == 1000):
 //   +100 .. +100+profCount   -> open a profession's tier submenu
 //   +200 .. +200+profCount*10 -> summon (profIndex * 10 + tierIndex)
 static constexpr uint32 PROFESSION_TIER_MENU_BASE = GOSSIP_ACTION_INFO_DEF + 100;
 static constexpr uint32 PROFESSION_SUMMON_BASE = GOSSIP_ACTION_INFO_DEF + 200;
+
+// Trade-goods vendor summon actions: +400 .. +400+TradeGoodsVendorCount. Kept clear of
+// the profession summon range (+200 .. +200+ProfessionTrainerCount*10) above.
+static constexpr uint32 TRADE_GOODS_SUMMON_BASE = GOSSIP_ACTION_INFO_DEF + 400;
 
 class premium_account : public ItemScript
 {
@@ -279,6 +321,9 @@ public:
 
         if (sConfigMgr->GetOption<bool>("ProfessionTrainers", true))
             AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "Profession Trainers", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 10);
+
+        if (sConfigMgr->GetOption<bool>("TradeGoodsVendors", true))
+            AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "Trade Goods Vendors", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 11);
 
         if (sConfigMgr->GetOption<bool>("PlayerInteraction", true))
             AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_PLAYER, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 9);
@@ -500,6 +545,16 @@ public:
                 SendGossipMenuFor(player, PREMIUM_MENU_TEXT, item->GetGUID());
                 break;
             }
+            case GOSSIP_ACTION_INFO_DEF + 11: /*Trade Goods Vendors*/
+            {
+                ClearGossipMenuFor(player);
+
+                for (uint32 i = 0; i < TradeGoodsVendorCount; ++i)
+                    AddGossipItemFor(player, GOSSIP_ICON_VENDOR, TradeGoodsVendorList[i].name, GOSSIP_SENDER_MAIN, TRADE_GOODS_SUMMON_BASE + i);
+
+                SendGossipMenuFor(player, PREMIUM_MENU_TEXT, item->GetGUID());
+                break;
+            }
             default:
             {
                 if (action >= PROFESSION_TIER_MENU_BASE && action < PROFESSION_TIER_MENU_BASE + ProfessionTrainerCount)
@@ -522,9 +577,18 @@ public:
 
                     if (tierIndex < ProfessionTrainerList[profIndex].tierCount)
                     {
-                        SummonTempNPC(player, ProfessionTrainerList[profIndex].tiers[tierIndex].entry);
+                        TrainerTier const& tier = ProfessionTrainerList[profIndex].tiers[tierIndex];
+                        uint32 entry = (player->GetTeamId() == TEAM_ALLIANCE) ? tier.entryA : tier.entryH;
+                        SummonTempNPC(player, entry);
                         CloseGossipMenuFor(player);
                     }
+                }
+                else if (action >= TRADE_GOODS_SUMMON_BASE && action < TRADE_GOODS_SUMMON_BASE + TradeGoodsVendorCount)
+                {
+                    TradeGoodsVendorData const& vendor = TradeGoodsVendorList[action - TRADE_GOODS_SUMMON_BASE];
+                    uint32 entry = (player->GetTeamId() == TEAM_ALLIANCE) ? vendor.entryA : vendor.entryH;
+                    SummonTempNPC(player, entry);
+                    CloseGossipMenuFor(player);
                 }
                 break;
             }
