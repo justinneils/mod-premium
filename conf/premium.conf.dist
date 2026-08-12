@@ -46,6 +46,18 @@ ProfessionTrainers = 1
 
 TradeGoodsVendors = 1
 
+#    Ammunition Vendor
+#        Description: Allows players to summon a vendor stocking every arrow and
+#                     bullet that is sold by a vendor anywhere in the game -- 12 of
+#                     each, Rough Arrow through Terrorshaft Arrow. Items keep their
+#                     own RequiredLevel, so this sells nothing a character could not
+#                     already buy; it just saves hunting down an ammo vendor after
+#                     outgrowing each tier.
+#        Default:     1  - (Enabled)
+#                     0  - (Disabled)
+
+AmmoVendor = 1
+
 #################################################################################################################
 #    PlayerInteraction
 #        Description: This enables the submenu for the below

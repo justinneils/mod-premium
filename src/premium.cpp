@@ -12,7 +12,14 @@ enum Vendors
     NPC_VENDOR_A    = 54,
     NPC_VENDOR_H    = 3163,
     NPC_AUCTION_H   = 9856,
-    NPC_AUCTION_A   = 8670
+    NPC_AUCTION_A   = 8670,
+
+    // Custom creature added by this module, stocking every vendor-sold arrow and
+    // bullet in one place. Defined in
+    // data/sql/db-world/updates/mod_premium_ammo_vendor.sql -- it is never spawned
+    // in the world, only summoned from the gossip menu. One entry for both factions:
+    // SummonTempNPC overrides the faction and the goblin model reads as neutral.
+    NPC_AMMO_VENDOR = 900017
 };
 
 enum Trainers
@@ -325,6 +332,9 @@ public:
         if (sConfigMgr->GetOption<bool>("TradeGoodsVendors", true))
             AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "Trade Goods Vendors", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 11);
 
+        if (sConfigMgr->GetOption<bool>("AmmoVendor", true))
+            AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "Ammunition Vendor", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 12);
+
         if (sConfigMgr->GetOption<bool>("PlayerInteraction", true))
             AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_PLAYER, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 9);
 
@@ -553,6 +563,14 @@ public:
                     AddGossipItemFor(player, GOSSIP_ICON_VENDOR, TradeGoodsVendorList[i].name, GOSSIP_SENDER_MAIN, TRADE_GOODS_SUMMON_BASE + i);
 
                 SendGossipMenuFor(player, PREMIUM_MENU_TEXT, item->GetGUID());
+                break;
+            }
+            case GOSSIP_ACTION_INFO_DEF + 12: /*Ammunition Vendor*/
+            {
+                // One entry for both factions -- unlike the trade-goods vendors, this
+                // is our own creature rather than a race-specific capital-city NPC.
+                SummonTempNPC(player, NPC_AMMO_VENDOR);
+                CloseGossipMenuFor(player);
                 break;
             }
             default:
