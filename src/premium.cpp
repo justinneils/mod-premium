@@ -14,12 +14,16 @@ enum Vendors
     NPC_AUCTION_H   = 9856,
     NPC_AUCTION_A   = 8670,
 
-    // Custom creature added by this module, stocking every vendor-sold arrow and
+    // Custom creatures added by this module, stocking every vendor-sold arrow and
     // bullet in one place. Defined in
-    // data/sql/db-world/updates/mod_premium_ammo_vendor.sql -- it is never spawned
-    // in the world, only summoned from the gossip menu. One entry for both factions:
-    // SummonTempNPC overrides the faction and the goblin model reads as neutral.
-    NPC_AMMO_VENDOR = 900017
+    // data/sql/db-world/updates/mod_premium_ammo_vendor.sql -- never spawned in the
+    // world, only summoned from the gossip menu. Two entries with identical stock,
+    // for the same reason the trainers and trade-goods vendors are paired:
+    // SummonTempNPC fixes the faction but not the model, so one shared entry would
+    // send an Alliance player an orc. Models are lifted from the Ironforge gunsmith
+    // and the Orgrimmar bowyer respectively.
+    NPC_AMMO_VENDOR_A = 900017,
+    NPC_AMMO_VENDOR_H = 900018
 };
 
 enum Trainers
@@ -567,9 +571,8 @@ public:
             }
             case GOSSIP_ACTION_INFO_DEF + 12: /*Ammunition Vendor*/
             {
-                // One entry for both factions -- unlike the trade-goods vendors, this
-                // is our own creature rather than a race-specific capital-city NPC.
-                SummonTempNPC(player, NPC_AMMO_VENDOR);
+                uint32 entry = (player->GetTeamId() == TEAM_ALLIANCE) ? NPC_AMMO_VENDOR_A : NPC_AMMO_VENDOR_H;
+                SummonTempNPC(player, entry);
                 CloseGossipMenuFor(player);
                 break;
             }
