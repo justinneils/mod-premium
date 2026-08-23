@@ -23,7 +23,16 @@ enum Vendors
     // send an Alliance player an orc. Models are lifted from the Ironforge gunsmith
     // and the Orgrimmar bowyer respectively.
     NPC_AMMO_VENDOR_A = 900017,
-    NPC_AMMO_VENDOR_H = 900018
+    NPC_AMMO_VENDOR_H = 900018,
+
+    // Likewise custom, and paired for the same reason: the full food-and-drink
+    // ladder in one place -- every rank of mana-regen drink, the three rations that
+    // restore health and mana together, and every rank of health-regen food.
+    // Defined in data/sql/db-world/updates/mod_premium_refreshment_vendor.sql.
+    // Models are lifted from the Ironforge bread vendor and the Orgrimmar beverage
+    // merchant.
+    NPC_REFRESHMENT_VENDOR_A = 900019,
+    NPC_REFRESHMENT_VENDOR_H = 900020
 };
 
 enum Trainers
@@ -339,6 +348,9 @@ public:
         if (sConfigMgr->GetOption<bool>("AmmoVendor", true))
             AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "Ammunition Vendor", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 12);
 
+        if (sConfigMgr->GetOption<bool>("RefreshmentVendor", true))
+            AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "Food & Drink Vendor", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 13);
+
         if (sConfigMgr->GetOption<bool>("PlayerInteraction", true))
             AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_PLAYER, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 9);
 
@@ -572,6 +584,13 @@ public:
             case GOSSIP_ACTION_INFO_DEF + 12: /*Ammunition Vendor*/
             {
                 uint32 entry = (player->GetTeamId() == TEAM_ALLIANCE) ? NPC_AMMO_VENDOR_A : NPC_AMMO_VENDOR_H;
+                SummonTempNPC(player, entry);
+                CloseGossipMenuFor(player);
+                break;
+            }
+            case GOSSIP_ACTION_INFO_DEF + 13: /*Food & Drink Vendor*/
+            {
+                uint32 entry = (player->GetTeamId() == TEAM_ALLIANCE) ? NPC_REFRESHMENT_VENDOR_A : NPC_REFRESHMENT_VENDOR_H;
                 SummonTempNPC(player, entry);
                 CloseGossipMenuFor(player);
                 break;

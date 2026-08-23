@@ -59,6 +59,22 @@ TradeGoodsVendors = 1
 AmmoVendor = 1
 
 #################################################################################################################
+#    RefreshmentVendor
+#        Description: Adds a "Food & Drink Vendor" option that summons a vendor
+#                     stocking the whole food-and-drink ladder in one place: all 11
+#                     ranks of mana-regen drink (Refreshing Spring Water through
+#                     Honeymint Tea), the three rations that restore health and mana
+#                     together (Enriched Manna Biscuit, Enriched Terocone Juice,
+#                     Naaru Ration), and all 9 ranks of health-regen food. Items keep
+#                     their own RequiredLevel, so this sells nothing a character could
+#                     not already buy; it just saves hunting down a drink vendor after
+#                     outgrowing each rank.
+#        Default:     1  - (Enabled)
+#                     0  - (Disabled)
+
+RefreshmentVendor = 1
+
+#################################################################################################################
 #    PlayerInteraction
 #        Description: This enables the submenu for the below
 #        Default:     1  - (Enabled)

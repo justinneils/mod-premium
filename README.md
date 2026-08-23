@@ -19,6 +19,7 @@ This module allows players to:
 - Demoph
 - Mount (60%) players will mount the correct mount for the race
 - Summon Vendor
+- Summon a Food & Drink vendor stocking every rank of mana-regen drink, health-and-mana ration and health-regen food, faction-matched
 - Trainer players will now spawn their class trainer also depending on faction.
 - Added creature spawn check. 
 
