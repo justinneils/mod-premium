@@ -92,6 +92,18 @@ RefreshmentVendor = 1
 BagVendor = 1
 
 #################################################################################################################
+#    ForgeAndAnvil
+#        Description: Adds a "Forge & Anvil" option that drops both in front of the
+#                     player for Premium.NpcDuration seconds. Between them they cover
+#                     the two professions that cannot be practised away from a city:
+#                     blacksmithing recipes need the anvil, and mining's smelting
+#                     recipes need the forge. Both work over the usual 10 yards.
+#        Default:     1  - (Enabled)
+#                     0  - (Disabled)
+
+ForgeAndAnvil = 1
+
+#################################################################################################################
 #    PlayerInteraction
 #        Description: This enables the submenu for the below
 #        Default:     1  - (Enabled)
@@ -115,12 +127,18 @@ Bank = 1
 
 Auction = 1
 
-#    Vendor
-#        Description: Allow Players to use vendor
+#    GuildBank
+#        Description: Adds a "Guild Bank" option to the Player Interactions menu,
+#                     shown to players who are in a guild. Unlike the personal bank
+#                     this cannot be opened by sending a packet -- every guild bank
+#                     message the client sends names the vault it is talking to, and
+#                     the server drops it unless that is a real guild bank object in
+#                     range -- so the option drops a Guild Vault in front of the
+#                     player to right-click, for Premium.NpcDuration seconds.
 #        Default:     1  - (Enabled)
 #                     0  - (Disabled)
 
-Vendor = 1
+GuildBank = 1
 
 #
 #    Mail Box

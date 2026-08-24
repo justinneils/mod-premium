@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "Define.h"
+#include "GameObject.h"
 #include "GossipDef.h"
 #include "Item.h"
 #include "Player.h"
@@ -9,8 +10,6 @@
 
 enum Vendors
 {
-    NPC_VENDOR_A    = 54,
-    NPC_VENDOR_H    = 3163,
     NPC_AUCTION_H   = 9856,
     NPC_AUCTION_A   = 8670,
 
@@ -44,6 +43,34 @@ enum Vendors
     NPC_BAG_VENDOR_A = 1321,
     NPC_BAG_VENDOR_H = 3369
 };
+
+// The game objects this module puts on the ground. Objects rather than NPCs because
+// each of these three IS an object in the world: there is no banker that opens a
+// guild vault and no smith that lends you an anvil.
+enum SummonedObjects
+{
+    // Guild Vault, GAMEOBJECT_TYPE_GUILD_BANK. The personal bank opens with a packet
+    // and no object at all (see the Bank case below), but the guild bank cannot:
+    // every guild-bank message the client sends names the vault it is talking to, and
+    // WorldSession::HandleGuildBanker* drops the message unless that GUID is a guild
+    // bank object within interaction range. So the vault is summoned and the player
+    // clicks it, exactly as they would in a capital city. 187299 is the most widely
+    // spawned of the vault entries.
+    GO_GUILD_VAULT = 187299,
+
+    // Blacksmithing recipes require spell focus 1 and mining's smelting recipes
+    // require spell focus 3 (Spell.dbc RequiresSpellFocus, checked in Spell::CheckCast
+    // against nearby GAMEOBJECT_TYPE_SPELL_FOCUS objects). These two provide them,
+    // each over a 10 yard radius, which is the whole of what a smith needs to work
+    // away from a city: an anvil to hammer on and a forge to smelt at.
+    GO_ANVIL = 1684,    // Blacksmith's Anvil, spell focus 1
+    GO_FORGE = 1685     // Forge, spell focus 3
+};
+
+// Where a summoned object lands: this far in front of the player, and this far to
+// either side of their facing so a pair does not land inside itself.
+static constexpr float GO_SUMMON_DISTANCE = 2.5f;
+static constexpr float GO_SUMMON_SPREAD = 0.8f;     // radians
 
 enum Trainers
 {
@@ -95,7 +122,8 @@ enum PremiumGossip
     GOSSIP_MOUNT,
     GOSSIP_TRAIN_ME,
     GOSSIP_PLAYER,
-    GOSSIP_VENDOR,
+    GOSSIP_VENDOR,      // no longer offered; kept so the indices below still line up
+                        // with gossip_menu_option's rows for menu 62001
     GOSSIP_MAIL,
     GOSSIP_BANK,
     GOSSIP_AUCTION_HOUSE,
@@ -312,8 +340,6 @@ public:
 
         if (player->FindNearestCreature(NPC_AUCTION_A, rangeCheck) ||
             player->FindNearestCreature(NPC_AUCTION_H, rangeCheck) ||
-            player->FindNearestCreature(NPC_VENDOR_A, rangeCheck) ||
-            player->FindNearestCreature(NPC_VENDOR_H, rangeCheck) ||
             player->FindNearestCreature(ROGUE_A, rangeCheck) ||
             player->FindNearestCreature(WARRIOR_A, rangeCheck) ||
             player->FindNearestCreature(HUNTER_A, rangeCheck) ||
@@ -364,6 +390,9 @@ public:
         if (sConfigMgr->GetOption<bool>("BagVendor", true))
             AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "Bag Vendor", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 14);
 
+        if (sConfigMgr->GetOption<bool>("ForgeAndAnvil", true))
+            AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Forge & Anvil", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 16);
+
         if (sConfigMgr->GetOption<bool>("PlayerInteraction", true))
             AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_PLAYER, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 9);
 
@@ -395,46 +424,6 @@ public:
             case GOSSIP_ACTION_INFO_DEF + 4: /*Mail Box*/
             {
                 player->GetSession()->SendShowMailBox(player->GetGUID());
-                break;
-            }
-            case GOSSIP_ACTION_INFO_DEF + 5: /*Vendor*/
-            {
-                uint32 vendorId = 0;
-                std::string salute;
-
-                if (player->GetTeamId() == TEAM_ALLIANCE)
-                {
-                    vendorId = NPC_VENDOR_A;
-                    switch (player->GetSession()->GetSessionDbLocaleIndex())
-                    {
-                    case LOCALE_enUS:
-                    case LOCALE_koKR:
-                    case LOCALE_frFR:
-                    case LOCALE_deDE:
-                    case LOCALE_zhCN:
-                    case LOCALE_zhTW:
-                    case LOCALE_ruRU:
-                    {
-                        salute = "Greetings";
-                        break;
-                    }
-                    case LOCALE_esES:
-                    case LOCALE_esMX:
-                    {
-                        salute = "Saludos.";
-                    }
-                    default:
-                        break;
-                    }
-                }
-                else
-                {
-                    vendorId = NPC_VENDOR_H;
-                    salute = "Zug zug";
-                }
-
-                SummonTempNPC(player, vendorId, salute.c_str());
-                CloseGossipMenuFor(player);
                 break;
             }
             case GOSSIP_ACTION_INFO_DEF + 6: /*Mount*/
@@ -559,14 +548,17 @@ public:
             {
                 ClearGossipMenuFor(player);
 
-                if (sConfigMgr->GetOption<bool>("Vendor", true))
-                    AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_VENDOR, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 5);
-
                 if (sConfigMgr->GetOption<bool>("MailBox", true))
                     AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_MAIL, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 4);
 
                 if (sConfigMgr->GetOption<bool>("Bank", true))
                     AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_BANK, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+
+                // Offered only to players who are in a guild: to anybody else the
+                // vault is an object that answers "you are not in a guild" when
+                // clicked, and there is no point summoning it for that.
+                if (sConfigMgr->GetOption<bool>("GuildBank", true) && player->GetGuildId())
+                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "Guild Bank", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 15);
 
                 if (sConfigMgr->GetOption<bool>("Auction", true))
                     AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_AUCTION_HOUSE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 7);
@@ -612,6 +604,26 @@ public:
             {
                 uint32 entry = (player->GetTeamId() == TEAM_ALLIANCE) ? NPC_BAG_VENDOR_A : NPC_BAG_VENDOR_H;
                 SummonTempNPC(player, entry);
+                CloseGossipMenuFor(player);
+                break;
+            }
+            case GOSSIP_ACTION_INFO_DEF + 15: /*Guild Bank*/
+            {
+                // Dropped in front of the player rather than opened for them: see
+                // GO_GUILD_VAULT for why the guild bank needs a real object where the
+                // personal bank needs none. Right-clicking it opens the guild bank.
+                SummonTempGO(player, GO_GUILD_VAULT);
+                CloseGossipMenuFor(player);
+                break;
+            }
+            case GOSSIP_ACTION_INFO_DEF + 16: /*Forge & Anvil*/
+            {
+                // Both, always. Blacksmithing wants the anvil and smelting wants the
+                // forge, but a blacksmith is usually also the miner who smelted the
+                // bars, and summoning one without the other would just mean coming
+                // back to the menu.
+                SummonTempGO(player, GO_FORGE, GO_SUMMON_SPREAD);
+                SummonTempGO(player, GO_ANVIL, -GO_SUMMON_SPREAD);
                 CloseGossipMenuFor(player);
                 break;
             }
@@ -692,6 +704,41 @@ public:
                     break;
             }
         }
+    }
+
+    // Put a temporary game object on the ground in front of the player. `angle` is
+    // relative to the player's facing, so a pair of objects can be placed either side
+    // of it instead of inside one another. The object belongs to the player -- it goes
+    // with them when they log out or die -- and lives for the same Premium.NpcDuration
+    // as a summoned NPC.
+    //
+    // SetSpawnedByDefault(false) is what makes it a temporary object rather than a
+    // world spawn, and it is not optional: GameObject::isSpawned() is FALSE for a
+    // default-spawned object that has a respawn timer, and an object that is not
+    // spawned is invisible to every client (GameObject::IsInvisibleDueToDespawn). The
+    // same flag routes GameObject::Update down the despawn path when the timer runs
+    // out instead of the respawn path. Visibility is refreshed by hand because the
+    // flag changes after the object has already been added to the map.
+    GameObject* SummonTempGO(Player* player, uint32 entry, float angle = 0.0f)
+    {
+        if (!player || entry == 0)
+            return nullptr;
+
+        int32 duration = sConfigMgr->GetOption<int32>("Premium.NpcDuration", 60);
+        if (duration <= 0) // Safeguard
+            duration = 60;
+
+        float x, y, z;
+        player->GetClosePoint(x, y, z, player->GetObjectSize(), GO_SUMMON_DISTANCE, angle);
+
+        GameObject* go = player->SummonGameObject(entry, x, y, z, player->GetOrientation(),
+                                                  0.0f, 0.0f, 0.0f, 0.0f, duration);
+        if (!go)
+            return nullptr;
+
+        go->SetSpawnedByDefault(false);
+        go->UpdateObjectVisibility(true);
+        return go;
     }
 
     void SummonTempNPC(Player* player, uint32 entry, const char* salute = "")
