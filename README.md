@@ -20,6 +20,7 @@ This module allows players to:
 - Mount (60%) players will mount the correct mount for the race
 - Summon Vendor
 - Summon a Food & Drink vendor stocking every rank of mana-regen drink, health-and-mana ration and health-regen food, faction-matched
+- Summon the faction's own Bag Vendor -- Alyssa Griffith (Stormwind) or Gotri (Orgrimmar) -- who sell bags from 6 up to 12 slots
 - Trainer players will now spawn their class trainer also depending on faction.
 - Added creature spawn check. 
 

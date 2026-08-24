@@ -32,7 +32,17 @@ enum Vendors
     // Models are lifted from the Ironforge bread vendor and the Orgrimmar beverage
     // merchant.
     NPC_REFRESHMENT_VENDOR_A = 900019,
-    NPC_REFRESHMENT_VENDOR_H = 900020
+    NPC_REFRESHMENT_VENDOR_H = 900020,
+
+    // The game's own bag vendors -- Alyssa Griffith in Stormwind and Gotri in
+    // Orgrimmar, both of whom carry the subname "Bag Vendor" in the stock data.
+    // Real NPCs rather than custom ones, because between them they already sell
+    // every bag a vendor sells outside the profession bags: Small Brown Pouch,
+    // Brown Leather Satchel, Heavy Brown Bag and Huge Brown Sack, identical stock
+    // on both, priced in gold and gated by nothing. Paired per faction for the
+    // model, exactly like the trainers and trade-goods vendors above.
+    NPC_BAG_VENDOR_A = 1321,
+    NPC_BAG_VENDOR_H = 3369
 };
 
 enum Trainers
@@ -351,6 +361,9 @@ public:
         if (sConfigMgr->GetOption<bool>("RefreshmentVendor", true))
             AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "Food & Drink Vendor", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 13);
 
+        if (sConfigMgr->GetOption<bool>("BagVendor", true))
+            AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "Bag Vendor", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 14);
+
         if (sConfigMgr->GetOption<bool>("PlayerInteraction", true))
             AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_PLAYER, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 9);
 
@@ -591,6 +604,13 @@ public:
             case GOSSIP_ACTION_INFO_DEF + 13: /*Food & Drink Vendor*/
             {
                 uint32 entry = (player->GetTeamId() == TEAM_ALLIANCE) ? NPC_REFRESHMENT_VENDOR_A : NPC_REFRESHMENT_VENDOR_H;
+                SummonTempNPC(player, entry);
+                CloseGossipMenuFor(player);
+                break;
+            }
+            case GOSSIP_ACTION_INFO_DEF + 14: /*Bag Vendor*/
+            {
+                uint32 entry = (player->GetTeamId() == TEAM_ALLIANCE) ? NPC_BAG_VENDOR_A : NPC_BAG_VENDOR_H;
                 SummonTempNPC(player, entry);
                 CloseGossipMenuFor(player);
                 break;

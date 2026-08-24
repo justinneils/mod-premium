@@ -75,6 +75,23 @@ AmmoVendor = 1
 RefreshmentVendor = 1
 
 #################################################################################################################
+#    BagVendor
+#        Description: Adds a "Bag Vendor" option that summons the game's own bag
+#                     vendor for the player's faction -- Alyssa Griffith in Stormwind
+#                     for Alliance, Gotri in Orgrimmar for Horde. Both carry the same
+#                     four bags, Small Brown Pouch (6 slots) through Huge Brown Sack
+#                     (12), priced in gold. Unlike the ammunition and food vendors
+#                     this summons a real NPC rather than a custom one, because those
+#                     two are the game's bag vendors and their stock needs no
+#                     assembling. The 20-slot profession bags are NOT included: they
+#                     are sold only by a handful of Outland vendors, and each one
+#                     needs the matching profession to be worth carrying.
+#        Default:     1  - (Enabled)
+#                     0  - (Disabled)
+
+BagVendor = 1
+
+#################################################################################################################
 #    PlayerInteraction
 #        Description: This enables the submenu for the below
 #        Default:     1  - (Enabled)
