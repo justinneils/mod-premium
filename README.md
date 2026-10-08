@@ -22,6 +22,7 @@ This module allows players to:
 - Summon a Food & Drink vendor stocking every rank of mana-regen drink, health-and-mana ration and health-regen food, faction-matched
 - Summon the faction's own Bag Vendor -- Alyssa Griffith (Stormwind) or Gotri (Orgrimmar) -- who sell bags from 6 up to 12 slots
 - Summon a forge and an anvil, for the mining and blacksmithing recipes that need them
+- Summon a Stable Master (hunters only) -- the faction's own, Jenova Stoneshield or Xon'cha -- to swap pets in and out of the stable or buy a stable slot
 - Trainer players will now spawn their class trainer also depending on faction.
 - Added creature spawn check. 
 

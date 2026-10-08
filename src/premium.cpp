@@ -41,7 +41,18 @@ enum Vendors
     // on both, priced in gold and gated by nothing. Paired per faction for the
     // model, exactly like the trainers and trade-goods vendors above.
     NPC_BAG_VENDOR_A = 1321,
-    NPC_BAG_VENDOR_H = 3369
+    NPC_BAG_VENDOR_H = 3369,
+
+    // The game's own capital-city stable masters -- Jenova Stoneshield in Stormwind
+    // and Xon'cha in Orgrimmar. Real NPCs, and paired per faction for the model like
+    // everything above, but here the entry matters for a second reason: the stable
+    // window is only opened by a creature that carries UNIT_NPC_FLAG_STABLEMASTER
+    // (0x400000) and a gossip menu with a GOSSIP_OPTION_STABLEPET row, and the server
+    // re-checks that flag on every stable packet (WorldSession::CheckStableMaster).
+    // A summoned copy of a real stable master satisfies both; a custom creature would
+    // have to reproduce them.
+    NPC_STABLE_MASTER_A = 11069,
+    NPC_STABLE_MASTER_H = 9988
 };
 
 // The game objects this module puts on the ground. Objects rather than NPCs because
@@ -393,6 +404,13 @@ public:
         if (sConfigMgr->GetOption<bool>("ForgeAndAnvil", true))
             AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Forge & Anvil", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 16);
 
+        // Hunters only: the stable is the hunter pet system, and the client-side
+        // gossip option is itself gated on the class (Player::PrepareGossipMenu drops
+        // GOSSIP_OPTION_STABLEPET for anybody else), so to any other class the
+        // summoned NPC would only offer the lost-companion chat.
+        if (sConfigMgr->GetOption<bool>("StableMaster", true) && player->getClass() == CLASS_HUNTER)
+            AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Stable Master", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 17);
+
         if (sConfigMgr->GetOption<bool>("PlayerInteraction", true))
             AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_PLAYER, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 9);
 
@@ -624,6 +642,16 @@ public:
                 // back to the menu.
                 SummonTempGO(player, GO_FORGE, GO_SUMMON_SPREAD);
                 SummonTempGO(player, GO_ANVIL, -GO_SUMMON_SPREAD);
+                CloseGossipMenuFor(player);
+                break;
+            }
+            case GOSSIP_ACTION_INFO_DEF + 17: /*Stable Master*/
+            {
+                // Right-click the summoned stable master and pick "I'd like to stable
+                // my pet here" to get the usual stable window: swap the active pet for
+                // a stabled one, or buy another stable slot.
+                uint32 entry = (player->GetTeamId() == TEAM_ALLIANCE) ? NPC_STABLE_MASTER_A : NPC_STABLE_MASTER_H;
+                SummonTempNPC(player, entry);
                 CloseGossipMenuFor(player);
                 break;
             }

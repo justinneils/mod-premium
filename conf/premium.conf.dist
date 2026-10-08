@@ -104,6 +104,21 @@ BagVendor = 1
 ForgeAndAnvil = 1
 
 #################################################################################################################
+#    StableMaster
+#        Description: Adds a "Stable Master" option, shown to hunters, that summons
+#                     the player's own faction stable master -- Jenova Stoneshield of
+#                     Stormwind for Alliance, Xon'cha of Orgrimmar for Horde -- for
+#                     Premium.NpcDuration seconds. Right-click her and pick "I'd like
+#                     to stable my pet here" for the usual stable window: swap the
+#                     active pet for a stabled one, or buy another stable slot. Only
+#                     hunters are offered it; the stable is the hunter pet system and
+#                     the game hides the stable gossip from every other class.
+#        Default:     1  - (Enabled)
+#                     0  - (Disabled)
+
+StableMaster = 1
+
+#################################################################################################################
 #    PlayerInteraction
 #        Description: This enables the submenu for the below
 #        Default:     1  - (Enabled)
