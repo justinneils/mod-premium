@@ -3,7 +3,7 @@
 --
 -- Casters otherwise have to re-find a drink vendor every ten levels, and the good
 -- ones are scattered across capitals and zones the party may not be in. This is
--- summoned from the premium item's gossip menu (see src/premium.cpp,
+-- summoned from the .premium menu (see src/premium.cpp,
 -- RefreshmentVendor).
 --
 -- Two entries, one per faction, following the same entryA/entryH pattern the module

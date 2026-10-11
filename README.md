@@ -12,24 +12,21 @@ This is a module for [AzerothCore](http://www.azerothcore.org) that adds Premium
 
 Current features:
 
-This module allows players to:
-- Morph
+This module allows players to open a menu with the `.premium` chat command, from which they can:
 - Mobile Bank
 - Mobile Auction
-- Demoph
-- Mount (60%) players will mount the correct mount for the race
 - Summon your Guild Bank (a Guild Vault to click, since the guild bank needs a real object)
 - Summon a Food & Drink vendor stocking every rank of mana-regen drink, health-and-mana ration and health-regen food, faction-matched
 - Summon the faction's own Bag Vendor -- Alyssa Griffith (Stormwind) or Gotri (Orgrimmar) -- who sell bags from 6 up to 12 slots
 - Summon a forge and an anvil, for the mining and blacksmithing recipes that need them
 - Summon a Stable Master (hunters only) -- the faction's own, Jenova Stoneshield or Xon'cha -- to swap pets in and out of the stable or buy a stable slot
 - Trainer players will now spawn their class trainer also depending on faction.
-- Added creature spawn check. 
+- Summon a Mailbox (a real one to click, since the mail window alone only works for GMs)
+- One summoned NPC at a time: summoning another dismisses the previous one
 
 Upcoming features:
 - Teleport players to major citys
 - Talent Reset features
-- Not allow morph if player is in shapeshift form
 
 ## Requirements
 
@@ -49,7 +46,7 @@ You can do clone it via git under the azerothcore/modules directory:
 
 or you can manually [download the module](https://github.com/azerothcore/mod-premium/archive/master.zip), unzip the premium folder and place it under the `azerothcore/modules` directory.
 
-assign the script to an item such as hearthstone using the script name 'premium_account'
+Players open the premium menu with the `.premium` chat command. Only accounts with an active row in the characters database's `premium` table can use it.
 
 ###2) Re-run cmake and launch a clean build of AzerothCore
 
@@ -59,8 +56,3 @@ assign the script to an item such as hearthstone using the script name 'premium_
 
 If you need to change the module configuration, go to your server configuration folder (e.g. **etc**), copy `premium.conf.dist` to `premium.conf` and edit it as you prefer.
 
-## Test the module
-
-There is a SQL query so you can create an item and test it quickly.
-
-![item screenshot](/screenshots/item.png?raw=true "item screenshot")

@@ -1,12 +1,15 @@
+#include "Chat.h"
+#include "CommandScript.h"
 #include "Config.h"
 #include "Define.h"
 #include "GameObject.h"
 #include "GossipDef.h"
-#include "Item.h"
 #include "Player.h"
+#include "PlayerScript.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
 #include "Spell.h"
+#include "TemporarySummon.h"
 
 enum Vendors
 {
@@ -69,6 +72,14 @@ enum SummonedObjects
     // spawned of the vault entries.
     GO_GUILD_VAULT = 187299,
 
+    // Mailbox, GAMEOBJECT_TYPE_MAILBOX -- the one in Gadgetzan, picked because it is
+    // friendly to both factions (faction 35). The mail window cannot be opened by
+    // packet alone for a player: sent against the player's own GUID it is accepted
+    // only from accounts holding RBAC_PERM_COMMAND_MAILBOX (WorldSession::
+    // CanOpenMailBox), so for everybody else the window opened but every send, take
+    // and delete in it was dropped as a cheat. A real mailbox in range passes.
+    GO_MAILBOX = 144112,
+
     // Blacksmithing recipes require spell focus 1 and mining's smelting recipes
     // require spell focus 3 (Spell.dbc RequiresSpellFocus, checked in Spell::CheckCast
     // against nearby GAMEOBJECT_TYPE_SPELL_FOCUS objects). These two provide them,
@@ -110,32 +121,16 @@ enum Trainers
     DEATHKNIGHT_AH  = 28472
 };
 
-enum Mounts
-{
-    HUMAN_MOUNT     = 470,
-    ORC_MOUNT       = 6653,
-    GNOME_MOUNT     = 17454,
-    NIGHTELF_MOUNT  = 8394,
-    DWARF_MOUNT     = 6899,
-    UNEAD_MOUNT     = 17463,
-    TAUREN_MOUNT    = 64657,
-    TROLL_MOUNT     = 8395,
-    BLOODELF_MOUNT  = 35022,
-    DRAENEI_MOUNT   = 34406
-};
-
 enum PremiumGossip
 {
     PREMIUM_MENU = 62001,
     PREMIUM_MENU_TEXT = 90003,
-    GOSSIP_MORPH = 0,
-    GOSSIP_DEMORPH,
-    GOSSIP_MOUNT,
-    GOSSIP_TRAIN_ME,
+    // Option ids into gossip_menu_option's rows for menu 62001. Rows 0-2 (Morph,
+    // Demorph, Mount) were deleted and row 5 (Vendor) is no longer offered, so the
+    // ids are pinned rather than counted.
+    GOSSIP_TRAIN_ME = 3,
     GOSSIP_PLAYER,
-    GOSSIP_VENDOR,      // no longer offered; kept so the indices below still line up
-                        // with gossip_menu_option's rows for menu 62001
-    GOSSIP_MAIL,
+    GOSSIP_MAIL = 6,
     GOSSIP_BANK,
     GOSSIP_AUCTION_HOUSE,
     GOSSIP_FACTION
@@ -329,59 +324,47 @@ static constexpr uint32 PROFESSION_SUMMON_BASE = GOSSIP_ACTION_INFO_DEF + 200;
 // the profession summon range (+200 .. +200+ProfessionTrainerCount*10) above.
 static constexpr uint32 TRADE_GOODS_SUMMON_BASE = GOSSIP_ACTION_INFO_DEF + 400;
 
-class premium_account : public ItemScript
+// The premium menu, opened by the .premium command (premium_command). It is sent
+// from the player's own GUID, so its clicks come back through premium_menu_player.
+class PremiumMenu
 {
 public:
-    premium_account() : ItemScript("premium_account") { }
-
-    bool OnUse(Player* player, Item* item, SpellCastTargets const& /*targets*/) override
+    // Why the menu cannot be opened for this player right now, or nullptr if it can.
+    static char const* CannotOpenReason(Player* player)
     {
         if (!sConfigMgr->GetOption<bool>("PremiumAccount", true))
-            return false;
+            return "The premium menu is disabled.";
 
         QueryResult result = CharacterDatabase.Query("SELECT `AccountId` FROM `premium` WHERE `active`=1 AND `AccountId`={}", player->GetSession()->GetAccountId());
 
         if (!result)
-            return false;
+            return "This account is not a premium account.";
 
         if (player->IsInCombat())
-            return false;
+            return "You can't do that while in combat.";
 
-        float rangeCheck = 10.0f;
+        return nullptr;
+    }
 
-        if (player->FindNearestCreature(NPC_AUCTION_A, rangeCheck) ||
-            player->FindNearestCreature(NPC_AUCTION_H, rangeCheck) ||
-            player->FindNearestCreature(ROGUE_A, rangeCheck) ||
-            player->FindNearestCreature(WARRIOR_A, rangeCheck) ||
-            player->FindNearestCreature(HUNTER_A, rangeCheck) ||
-            player->FindNearestCreature(PRIEST_A, rangeCheck) ||
-            player->FindNearestCreature(PALADIN_A, rangeCheck) ||
-            player->FindNearestCreature(DRUID_A, rangeCheck) ||
-            player->FindNearestCreature(SHAMAN_A, rangeCheck) ||
-            player->FindNearestCreature(MAGE_A, rangeCheck) ||
-            player->FindNearestCreature(WARLOCK_A, rangeCheck) ||
-            player->FindNearestCreature(HUNTER_H, rangeCheck) ||
-            player->FindNearestCreature(WARRIOR_H, rangeCheck) ||
-            player->FindNearestCreature(SHAMAN_H, rangeCheck) ||
-            player->FindNearestCreature(PALADIN_H, rangeCheck) ||
-            player->FindNearestCreature(ROGUE_H, rangeCheck) ||
-            player->FindNearestCreature(WARLOCK_H, rangeCheck) ||
-            player->FindNearestCreature(MAGE_H, rangeCheck) ||
-            player->FindNearestCreature(PRIEST_H, rangeCheck) ||
-            player->FindNearestCreature(DRUID_H, rangeCheck) ||
-            player->FindNearestCreature(DEATHKNIGHT_AH, rangeCheck))
-            return false;
+    // Menus sent from the player's own GUID are only answered while the menu id the
+    // client echoes back matches the one the server last sent (see
+    // WorldSession::HandleGossipSelectOptionOpcode), and that id is what tells
+    // premium_menu_player its clicks apart from any other module's. ClearMenus resets
+    // it to 0, so it is set again on every send.
+    static void SendMenu(Player* player)
+    {
+        player->PlayerTalkClass->GetGossipMenu().SetMenuId(PREMIUM_MENU);
+        SendGossipMenuFor(player, PREMIUM_MENU_TEXT, player->GetGUID());
+    }
 
+    static void ShowMainMenu(Player* player)
+    {
+        // No "is an NPC already standing here" check: one used to refuse the whole
+        // menu while any class trainer or auctioneer was within 10 yards -- which
+        // includes the one the menu just summoned, so it went dead for the full
+        // Premium.NpcDuration. Stacking is handled where it matters instead, in
+        // SummonTempNPC, which dismisses whatever NPC the menu summoned before.
         ClearGossipMenuFor(player);
-
-        if (sConfigMgr->GetOption<bool>("Morph", true))
-        {
-            AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_MORPH, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-            AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_DEMORPH, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-        }
-
-        if (sConfigMgr->GetOption<bool>("Mount", true))
-            AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_MOUNT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 6);
 
         if (sConfigMgr->GetOption<bool>("Trainers", true))
             AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_TRAIN_ME, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 8);
@@ -414,26 +397,13 @@ public:
         if (sConfigMgr->GetOption<bool>("PlayerInteraction", true))
             AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_PLAYER, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 9);
 
-        SendGossipMenuFor(player, PREMIUM_MENU_TEXT, item->GetGUID());
-        return false; // Cast the spell on use normally
+        SendMenu(player);
     }
 
-    void OnGossipSelect(Player* player, Item* item, uint32 /*sender*/, uint32 action) override
+    static void HandleSelect(Player* player, uint32 action)
     {
         switch (action)
         {
-            case GOSSIP_ACTION_INFO_DEF + 1: /*Morph*/
-            {
-                CloseGossipMenuFor(player);
-                ApplyRandomMorph(player);
-                break;
-            }
-            case GOSSIP_ACTION_INFO_DEF + 2: /*Demorph*/
-            {
-                player->DeMorph();
-                CloseGossipMenuFor(player);
-                break;
-            }
             case GOSSIP_ACTION_INFO_DEF + 3: /*Show Bank*/
             {
                 player->GetSession()->SendShowBank(player->GetGUID());
@@ -441,25 +411,10 @@ public:
             }
             case GOSSIP_ACTION_INFO_DEF + 4: /*Mail Box*/
             {
-                player->GetSession()->SendShowMailBox(player->GetGUID());
-                break;
-            }
-            case GOSSIP_ACTION_INFO_DEF + 6: /*Mount*/
-            {
+                // Dropped in front of the player to right-click: see GO_MAILBOX for
+                // why opening the mail window directly does not work.
+                SummonTempGO(player, GO_MAILBOX);
                 CloseGossipMenuFor(player);
-                switch (player->getRace())
-                {
-                    case RACE_HUMAN:         player->CastSpell(player, HUMAN_MOUNT); break;
-                    case RACE_ORC:           player->CastSpell(player, ORC_MOUNT); break;
-                    case RACE_GNOME:         player->CastSpell(player, GNOME_MOUNT); break;
-                    case RACE_NIGHTELF:      player->CastSpell(player, NIGHTELF_MOUNT); break;
-                    case RACE_DWARF:         player->CastSpell(player, DWARF_MOUNT); break;
-                    case RACE_DRAENEI:       player->CastSpell(player, DRAENEI_MOUNT); break;
-                    case RACE_UNDEAD_PLAYER: player->CastSpell(player, UNEAD_MOUNT); break;
-                    case RACE_TAUREN:        player->CastSpell(player, TAUREN_MOUNT); break;
-                    case RACE_TROLL:         player->CastSpell(player, TROLL_MOUNT); break;
-                    case RACE_BLOODELF:      player->CastSpell(player, BLOODELF_MOUNT); break;
-                }
                 break;
             }
             case GOSSIP_ACTION_INFO_DEF + 7: /*Auction House*/
@@ -581,7 +536,7 @@ public:
                 if (sConfigMgr->GetOption<bool>("Auction", true))
                     AddGossipItemFor(player, PREMIUM_MENU, GOSSIP_AUCTION_HOUSE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 7);
 
-                SendGossipMenuFor(player, PREMIUM_MENU_TEXT, item->GetGUID());
+                SendMenu(player);
                 break;
             }
             case GOSSIP_ACTION_INFO_DEF + 10: /*Profession Trainers*/
@@ -591,7 +546,7 @@ public:
                 for (uint32 i = 0; i < ProfessionTrainerCount; ++i)
                     AddGossipItemFor(player, GOSSIP_ICON_TRAINER, ProfessionTrainerList[i].name, GOSSIP_SENDER_MAIN, PROFESSION_TIER_MENU_BASE + i);
 
-                SendGossipMenuFor(player, PREMIUM_MENU_TEXT, item->GetGUID());
+                SendMenu(player);
                 break;
             }
             case GOSSIP_ACTION_INFO_DEF + 11: /*Trade Goods Vendors*/
@@ -601,7 +556,7 @@ public:
                 for (uint32 i = 0; i < TradeGoodsVendorCount; ++i)
                     AddGossipItemFor(player, GOSSIP_ICON_VENDOR, TradeGoodsVendorList[i].name, GOSSIP_SENDER_MAIN, TRADE_GOODS_SUMMON_BASE + i);
 
-                SendGossipMenuFor(player, PREMIUM_MENU_TEXT, item->GetGUID());
+                SendMenu(player);
                 break;
             }
             case GOSSIP_ACTION_INFO_DEF + 12: /*Ammunition Vendor*/
@@ -667,7 +622,7 @@ public:
                     for (uint32 i = 0; i < prof.tierCount; ++i)
                         AddGossipItemFor(player, GOSSIP_ICON_TRAINER, prof.tiers[i].label, GOSSIP_SENDER_MAIN, PROFESSION_SUMMON_BASE + profIndex * 10 + i);
 
-                    SendGossipMenuFor(player, PREMIUM_MENU_TEXT, item->GetGUID());
+                    SendMenu(player);
                 }
                 else if (action >= PROFESSION_SUMMON_BASE && action < PROFESSION_SUMMON_BASE + ProfessionTrainerCount * 10)
                 {
@@ -695,45 +650,6 @@ public:
         }
     }
 
-    void ApplyRandomMorph(Player* player)
-    {
-        uint32 random = (urand(1, 26)); // Change this line when adding more morphs
-        {
-            switch (random)
-            {
-                case 1: player->SetDisplayId(10134); break;     // Troll Female                 'Orb of Deception'
-                case 2: player->SetDisplayId(10135); break;     // Troll Male                   'Orb of Deception'
-                case 3: player->SetDisplayId(10136); break;     // Tauren Male                  'Orb of Deception'
-                case 4: player->SetDisplayId(10137); break;     // Human Male                   'Orb of Deception'
-                case 5: player->SetDisplayId(10138); break;     // Human Female                 'Orb of Deception'
-                case 6: player->SetDisplayId(10139); break;     // Orc Male                     'Orb of Deception'
-                case 7: player->SetDisplayId(10140); break;     // Orc Female                   'Orb of Deception'
-                case 8: player->SetDisplayId(10141); break;     // Dwarf Male                   'Orb of Deception'
-                case 9: player->SetDisplayId(10142); break;     // Dwarf Female                 'Orb of Deception'
-                case 10: player->SetDisplayId(10143); break;    // NightElf Male                'Orb of Deception'
-                case 11: player->SetDisplayId(10144); break;    // NightElf Female              'Orb of Deception'
-                case 12: player->SetDisplayId(10145); break;    // Undead Female                'Orb of Deception'
-                case 13: player->SetDisplayId(10146); break;    // Undead Male                  'Orb of Deception'
-                case 14: player->SetDisplayId(10147); break;    // Tauren Female                'Orb of Deception'
-                case 15: player->SetDisplayId(10148); break;    // Gnome Male                   'Orb of Deception'
-                case 16: player->SetDisplayId(10149); break;    // Gnome Female                 'Orb of Deception'
-                case 17: player->SetDisplayId(4527); break;     // Thrall                       'Orgrimmar Boss'
-                case 18: player->SetDisplayId(11657); break;    // Lady Sylvanas                'Undercity Boss'
-                case 19: player->SetDisplayId(4307); break;     // Cairne Bloodhoof             'Thunderbluff Boss'
-                case 20: player->SetDisplayId(17122); break;    // Lor'themar Theron            'Silvermoon City Boss'
-                case 21: player->SetDisplayId(3597); break;     // King Magni Bronzebeard       'Ironforge Boss'
-                case 22: player->SetDisplayId(5566); break;     // Highlord Bolvar Fordragon    'Stormwind Boss'
-                case 23: player->SetDisplayId(7006); break;     // High Tinker Mekkatorque      'Gnomer Boss'
-                case 24: player->SetDisplayId(7274); break;     // Tyrande Whisperwind          'Darnassus Boss'
-                case 25: player->SetDisplayId(21976); break;    // Arthus Small                 'Arthus'
-                case 26: player->SetDisplayId(24641); break;    // Arthus Ghost                 'Arthus Ghost'
-
-                default:
-                    break;
-            }
-        }
-    }
-
     // Put a temporary game object on the ground in front of the player. `angle` is
     // relative to the player's facing, so a pair of objects can be placed either side
     // of it instead of inside one another. The object belongs to the player -- it goes
@@ -747,7 +663,7 @@ public:
     // same flag routes GameObject::Update down the despawn path when the timer runs
     // out instead of the respawn path. Visibility is refreshed by hand because the
     // flag changes after the object has already been added to the map.
-    GameObject* SummonTempGO(Player* player, uint32 entry, float angle = 0.0f)
+    static GameObject* SummonTempGO(Player* player, uint32 entry, float angle = 0.0f)
     {
         if (!player || entry == 0)
             return nullptr;
@@ -769,16 +685,74 @@ public:
         return go;
     }
 
-    void SummonTempNPC(Player* player, uint32 entry, const char* salute = "")
+    // Every creature entry this menu can summon, gathered from the tables above.
+    static std::vector<uint32> const& SummonableEntries()
+    {
+        static std::vector<uint32> const entries = []
+        {
+            std::vector<uint32> list =
+            {
+                NPC_AUCTION_A, NPC_AUCTION_H,
+                NPC_AMMO_VENDOR_A, NPC_AMMO_VENDOR_H,
+                NPC_REFRESHMENT_VENDOR_A, NPC_REFRESHMENT_VENDOR_H,
+                NPC_BAG_VENDOR_A, NPC_BAG_VENDOR_H,
+                NPC_STABLE_MASTER_A, NPC_STABLE_MASTER_H,
+                DRUID_A, HUNTER_A, MAGE_A, PALADIN_A, PRIEST_A, ROGUE_A, SHAMAN_A, WARLOCK_A, WARRIOR_A,
+                DRUID_H, HUNTER_H, MAGE_H, PALADIN_H, PRIEST_H, ROGUE_H, SHAMAN_H, WARLOCK_H, WARRIOR_H,
+                DEATHKNIGHT_AH
+            };
+
+            for (ProfessionTrainerData const& prof : ProfessionTrainerList)
+                for (uint32 i = 0; i < prof.tierCount; ++i)
+                {
+                    list.push_back(prof.tiers[i].entryA);
+                    list.push_back(prof.tiers[i].entryH);
+                }
+
+            for (TradeGoodsVendorData const& vendor : TradeGoodsVendorList)
+            {
+                list.push_back(vendor.entryA);
+                list.push_back(vendor.entryH);
+            }
+
+            return list;
+        }();
+
+        return entries;
+    }
+
+    // One summoned NPC at a time: whatever the menu summoned for this player before
+    // is dismissed when they summon the next, whichever menu either came from. Only
+    // the player's own summons are touched -- the same entries are real world spawns
+    // (the class trainers and bag vendors are) and other players' summons too. The
+    // search radius is generous because a summon follows its owner, so it is never
+    // far; one left behind on another map simply times out as before.
+    static void DespawnOwnSummons(Player* player)
+    {
+        std::list<Creature*> existing;
+        player->GetCreatureListWithEntryInGrid(existing, SummonableEntries(), 100.0f);
+
+        for (Creature* creature : existing)
+            if (TempSummon* summon = creature->ToTempSummon())
+                if (summon->GetSummonerGUID() == player->GetGUID())
+                    summon->DespawnOrUnsummon();
+    }
+
+    static void SummonTempNPC(Player* player, uint32 entry, const char* salute = "")
     {
         if (!player || entry == 0)
             return;
 
         int npcDuration = sConfigMgr->GetOption<int32>("Premium.NpcDuration", 60) * IN_MILLISECONDS;
         if (npcDuration <= 0) // Safeguard
-            npcDuration = 60;
+            npcDuration = 60 * IN_MILLISECONDS;
+
+        DespawnOwnSummons(player);
 
         Creature* npc = player->SummonCreature(entry, player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, npcDuration);
+        if (!npc)
+            return;
+
         npc->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         npc->GetMotionMaster()->MoveFollow(player, PET_FOLLOW_DIST, player->GetFollowAngle());
         npc->SetFaction(player->GetFaction());
@@ -788,7 +762,55 @@ public:
     }
 };
 
+// Clicks in the menu: sent from the player's own GUID, they arrive at this player
+// hook rather than at any creature, object or item script.
+class premium_menu_player : public PlayerScript
+{
+public:
+    premium_menu_player() : PlayerScript("premium_menu_player", { PLAYERHOOK_ON_GOSSIP_SELECT }) { }
+
+    void OnPlayerGossipSelect(Player* player, uint32 menuId, uint32 /*sender*/, uint32 action) override
+    {
+        if (menuId == PREMIUM_MENU)
+            PremiumMenu::HandleSelect(player, action);
+    }
+};
+
+using namespace Acore::ChatCommands;
+
+// .premium -- opens the premium menu.
+class premium_command : public CommandScript
+{
+public:
+    premium_command() : CommandScript("premium_command") { }
+
+    ChatCommandTable GetCommands() const override
+    {
+        static ChatCommandTable commandTable =
+        {
+            { "premium", HandlePremiumCommand, SEC_PLAYER, Console::No }
+        };
+
+        return commandTable;
+    }
+
+    static bool HandlePremiumCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+
+        if (char const* reason = PremiumMenu::CannotOpenReason(player))
+        {
+            handler->SendErrorMessage(reason);
+            return false;
+        }
+
+        PremiumMenu::ShowMainMenu(player);
+        return true;
+    }
+};
+
 void AddPremiumAccount()
 {
-    new premium_account();
+    new premium_menu_player();
+    new premium_command();
 }

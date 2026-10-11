@@ -9,20 +9,6 @@
 
 PremiumAccount = 1
 
-#    Morph
-#        Description: Enable Morph & demorph option for players
-#        Default:     1  - (Enabled)
-#                     0  - (Disabled)
-
-Morph = 1
-
-#    Mount
-#        Description: Allow Players to use mount
-#        Default:     1  - (Enabled)
-#                     0  - (Disabled)
-
-Mount = 1
-
 #    Class Trainers
 #        Description: Allows players to spawn class trainers
 #        Default:     1  - (Enabled)
@@ -157,7 +143,10 @@ GuildBank = 1
 
 #
 #    Mail Box
-#        Description: Allow Players Access ingame Mail
+#        Description: Drops a mailbox in front of the player to right-click, for
+#                     Premium.NpcDuration seconds. A real mailbox rather than the
+#                     mail window opened directly, which only accounts with GM
+#                     permission can actually send or take mail through.
 #        Default:     1  - (Enabled)
 #                     0  - (Disabled)
 
@@ -165,7 +154,9 @@ MailBox = 1
 
 ##################################################################################################################
 #   Premium.NpcDuration
-#       Description: Time (in seconds) before despawn of summoned NPC
+#       Description: Time (in seconds) before despawn of summoned NPC or object.
+#                    Only one summoned NPC is out at a time: summoning another
+#                    dismisses the previous one.
 #       Default:    60 - (Seconds)
 
 Premium.NpcDuration = 60

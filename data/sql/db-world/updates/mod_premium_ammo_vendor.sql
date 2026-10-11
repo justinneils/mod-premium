@@ -3,7 +3,7 @@
 --
 -- Hunters otherwise have to keep finding an ammo vendor as they outgrow each tier,
 -- and the good ones are scattered across zones the player may not be in. This is
--- summoned from the premium item's gossip menu (see src/premium.cpp, AmmoVendor).
+-- summoned from the .premium menu (see src/premium.cpp, AmmoVendor).
 --
 -- Two entries, one per faction, following the same entryA/entryH pattern the module
 -- already uses for its profession trainers and trade-goods vendors. SummonTempNPC
