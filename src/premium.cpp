@@ -238,20 +238,36 @@ static TrainerTier const TailoringTiers[] =
 {
     { "Journeyman",   1103,  2855 },
     { "Expert",       5567,  3363 },
-    { "Artisan",      1346,  3363 },
+    { "Artisan",      1346,  4576 },  // Georgio Bolero / Josef Gregorian (Undercity)
     { "Master",       33684, 33684 },
     { "Grand Master", 26914, 26914 }
 };
 static TrainerTier const CookingTiers[] =
 {
     { "Journeyman",   3087,  3026 },
-    { "Master",       19186, 19186 },
+    // No trainer teaches Expert, Artisan or Master cooking in 3.3.5: each is learned
+    // from a book, so these tiers summon the book's seller instead of a trainer.
+    // Expert Cookbook (item 16072): Shandrina (Ashenvale) / Wulan (Desolace).
+    // Artisan is a quest reward (Clamlette Surprise) with no seller, so no tier.
+    // Master Cookbook (item 27736): Gaston (Honor Hold) / Baxter (Thrallmar), who
+    // also train cooking. The Shattrath entry used here before, Kylene, is a barmaid
+    // with three recipes and no cookbook.
+    { "Expert (cookbook)", 3955,  12033 },
+    { "Master (cookbook)", 18987, 18988 },
     { "Grand Master", 26905, 26905 }
 };
 static TrainerTier const FirstAidTiers[] =
 {
     { "Journeyman",   2327,  3373 },
-    { "Master",       22477, 22477 },
+    // Like cooking, Expert, Artisan and Master first aid are learned from books, not
+    // trainers, so these tiers summon the seller.
+    // "Expert First Aid - Under Wraps" (item 16084): Deneb Walker (Refuge Pointe) /
+    // Balai Lok'Wein (Brackenwall Village).
+    // Artisan is a quest reward (Triage) with no seller, so no tier.
+    // "Master First Aid - Doctor in the House" (item 22012): the Outland medics
+    // Burko (Temple of Telhamat) / Aresella (Falcon Watch).
+    { "Expert (book)", 2805,  13476 },
+    { "Master (book)", 18990, 18991 },
     { "Grand Master", 23734, 23734 }
 };
 static TrainerTier const FishingTiers[] =
